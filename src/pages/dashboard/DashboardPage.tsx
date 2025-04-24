@@ -38,20 +38,21 @@ const DashboardPage = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true)
-
+  
         // Fetch projects from the API endpoint
         const response = await projectService.getProjects()
         
+        // Verifica la estructura correcta de la respuesta
         if (response?.data?.data?.projects) {
           const projectsData = response.data.data.projects
           setProjects(projectsData)
-
+  
           // Get recent projects (5 most recently updated)
           const sortedProjects = [...projectsData]
             .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
             .slice(0, 5)
           setRecentProjects(sortedProjects)
-
+  
           // Process projects for status data
           const statusCounts: Record<ProjectStatus, number> = {
             "En análisis": 0,
@@ -59,28 +60,33 @@ const DashboardPage = () => {
             "En pruebas": 0,
             "Aprobado": 0,
             "Cancelado": 0
-          };
+          }
+          
+          projectsData.forEach((project: Project) => {
+            statusCounts[project.status] = (statusCounts[project.status] || 0) + 1
+          })
           
           const statusData = Object.entries(statusCounts).map(([status, count]) => ({
             status,
             project_count: count
           }))
           setStatusData(statusData)
-
+  
           // Process projects for analyst data if admin
           if (isAdmin) {
             // Collect analysts data
             const analystCounts: Record<string, number> = {}
             projectsData.forEach((project: Project) => {
-              statusCounts[project.status] = (statusCounts[project.status] || 0) + 1;
-            });
+              const analystName = project.qaAnalyst ? project.qaAnalyst.full_name : 'Sin asignar'
+              analystCounts[analystName] = (analystCounts[analystName] || 0) + 1
+            })
             
             const analystData = Object.entries(analystCounts).map(([analyst, count]) => ({
               analyst,
               count
             }))
             setAnalystData(analystData)
-
+  
             // Collect client data
             const clientCounts: Record<string, number> = {}
             projectsData.forEach((project: Project) => {
@@ -104,7 +110,7 @@ const DashboardPage = () => {
         setLoading(false)
       }
     }
-
+  
     fetchDashboardData()
   }, [isAdmin])
 
