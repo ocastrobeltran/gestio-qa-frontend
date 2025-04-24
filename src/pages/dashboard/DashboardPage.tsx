@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
-import { projectService, reportService } from "../../services/api"
+import { projectService } from "../../services/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
@@ -39,26 +39,62 @@ const DashboardPage = () => {
       try {
         setLoading(true)
 
-        // Fetch projects
-        const projectsResponse = await projectService.getProjects()
-        setProjects(projectsResponse.data.data.projects)
+        // Fetch projects from the API endpoint
+        const response = await projectService.getProjects()
+        
+        if (response?.data?.data?.projects) {
+          const projectsData = response.data.data.projects
+          setProjects(projectsData)
 
-        // Get recent projects
-        const sortedProjects = [...projectsResponse.data.data.projects]
-          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-          .slice(0, 5)
-        setRecentProjects(sortedProjects)
+          // Get recent projects (5 most recently updated)
+          const sortedProjects = [...projectsData]
+            .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+            .slice(0, 5)
+          setRecentProjects(sortedProjects)
 
-        // Fetch report data
-        const statusResponse = await reportService.getProjectsByStatus()
-        setStatusData(statusResponse.data.data.statusReport)
+          // Process projects for status data
+          const statusCounts: Record<ProjectStatus, number> = {}
+          projectsData.forEach(project => {
+            statusCounts[project.status] = (statusCounts[project.status] || 0) + 1
+          })
+          
+          const statusData = Object.entries(statusCounts).map(([status, count]) => ({
+            status,
+            project_count: count
+          }))
+          setStatusData(statusData)
 
-        if (isAdmin) {
-          const analystResponse = await reportService.getProjectsByAnalyst()
-          setAnalystData(analystResponse.data.data.analystReport)
+          // Process projects for analyst data if admin
+          if (isAdmin) {
+            // Collect analysts data
+            const analystCounts: Record<string, number> = {}
+            projectsData.forEach(project => {
+              const analystName = project.qaAnalyst ? project.qaAnalyst.full_name : 'Sin asignar'
+              analystCounts[analystName] = (analystCounts[analystName] || 0) + 1
+            })
+            
+            const analystData = Object.entries(analystCounts).map(([analyst, count]) => ({
+              analyst,
+              count
+            }))
+            setAnalystData(analystData)
 
-          const clientResponse = await reportService.getProjectsByClient()
-          setClientData(clientResponse.data.data.clientReport)
+            // Collect client data
+            const clientCounts: Record<string, number> = {}
+            projectsData.forEach(project => {
+              if (project.client) {
+                clientCounts[project.client] = (clientCounts[project.client] || 0) + 1
+              }
+            })
+            
+            const clientData = Object.entries(clientCounts).map(([client, count]) => ({
+              client,
+              count
+            }))
+            setClientData(clientData)
+          }
+        } else {
+          console.error("Invalid response format from API:", response)
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error)

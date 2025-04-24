@@ -41,13 +41,19 @@ const CreateProjectPage = () => {
     const fetchAnalysts = async () => {
       try {
         const response = await userService.getUsers()
+        console.log("User data:", response.data) // Add this to debug
         const analystUsers = response.data.data.users.filter((u: User) => u.role === "analyst")
+        console.log("Filtered analysts:", analystUsers) // Add this to debug
         setAnalysts(analystUsers)
       } catch (error) {
         console.error("Error fetching analysts:", error)
+        // Log more detailed error information
+        if (error.response) {
+          console.error("Error response data:", error.response.data)
+        }
       }
     }
-
+  
     fetchAnalysts()
   }, [])
 
@@ -102,7 +108,7 @@ const CreateProjectPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
+  
     // Validate required fields
     if (!formData.title || !formData.initiative || !formData.client || !formData.pm || !formData.lead_dev) {
       toast({
@@ -112,33 +118,52 @@ const CreateProjectPage = () => {
       })
       return
     }
-
+  
     // Filter out empty developers and assets
-    const filteredDevelopers = formData.developers.filter((dev) => dev.developer_name.trim() !== "")
-    const filteredAssets = formData.assets.filter((asset) => asset.asset_url.trim() !== "")
-
+    const filteredDevelopers = formData.developers
+      .filter((dev) => dev.developer_name.trim() !== "")
+      .map(dev => dev.developer_name);
+  
+    const filteredAssets = formData.assets
+      .filter((asset) => asset.asset_url.trim() !== "")
+      .map(asset => asset.asset_url);
+  
     try {
       setLoading(true)
-
+  
       // Prepare data for API
       const projectData = {
-        ...formData,
+        title: formData.title,
+        initiative: formData.initiative,
+        client: formData.client,
+        pm: formData.pm,
+        lead_dev: formData.lead_dev,
+        designer: formData.designer || null,
+        design_url: formData.design_url || null,
+        test_url: formData.test_url || null,
+        qa_analyst_id: formData.qa_analyst_id === "not_assigned" ? null : formData.qa_analyst_id || null,
+        status: formData.status,
         developers: filteredDevelopers,
         assets: filteredAssets,
-        qa_analyst_id: formData.qa_analyst_id || null,
         created_by: user?.id,
       }
-
+  
+      console.log("Enviando datos:", projectData);
+      
       const response = await projectService.createProject(projectData)
-
+  
       toast({
         title: "Proyecto creado",
         description: "El proyecto ha sido creado exitosamente.",
       })
-
+  
       navigate(`/projects/${response.data.data.project.id}`)
     } catch (error) {
       console.error("Error creating project:", error)
+      // Log more detailed error information
+      if (error.response) {
+        console.error("Error response data:", error.response.data)
+      }
       toast({
         variant: "destructive",
         title: "Error",
@@ -266,7 +291,7 @@ const CreateProjectPage = () => {
                 <div className="space-y-2">
                   <Label htmlFor="qa_analyst_id">Analista QA</Label>
                   <Select
-                    value={formData.qa_analyst_id}
+                    value={formData.qa_analyst_id || "not_assigned"}
                     onValueChange={(value) => handleSelectChange("qa_analyst_id", value)}
                   >
                     <SelectTrigger>
@@ -274,11 +299,17 @@ const CreateProjectPage = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="not_assigned">Sin asignar</SelectItem>
-                      {analysts.map((analyst) => (
-                        <SelectItem key={analyst.id} value={analyst.id.toString()}>
-                          {analyst.full_name}
+                      {analysts && analysts.length > 0 ? (
+                        analysts.map((analyst) => (
+                          <SelectItem key={analyst.id} value={analyst.id.toString()}>
+                            {analyst.full_name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no_analysts" disabled>
+                          No hay analistas disponibles
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

@@ -183,20 +183,35 @@ const EditProjectPage = () => {
       return
     }
 
-    // Filter out empty developers and assets
-    const filteredDevelopers = formData.developers.filter((dev) => dev.developer_name.trim() !== "")
-    const filteredAssets = formData.assets.filter((asset) => asset.asset_url.trim() !== "")
+    // Filter out empty developers and assets and convert to the expected format
+    const filteredDevelopers = formData.developers
+      .filter((dev) => dev.developer_name.trim() !== "")
+      .map(dev => dev.developer_name); // Extraer solo los nombres como strings
+
+    const filteredAssets = formData.assets
+      .filter((asset) => asset.asset_url.trim() !== "")
+      .map(asset => asset.asset_url); // Extraer solo las URLs como strings
 
     try {
       setSubmitting(true)
 
       // Prepare data for API
       const projectData = {
-        ...formData,
-        developers: filteredDevelopers,
-        assets: filteredAssets,
+        title: formData.title,
+        initiative: formData.initiative,
+        client: formData.client,
+        pm: formData.pm,
+        lead_dev: formData.lead_dev,
+        designer: formData.designer,
+        design_url: formData.design_url,
+        test_url: formData.test_url,
         qa_analyst_id: formData.qa_analyst_id || null,
+        status: formData.status,
+        developers: filteredDevelopers, // Ahora es un array de strings
+        assets: filteredAssets, // Ahora es un array de strings
       }
+
+      console.log("Enviando datos para actualizar:", projectData); // Para depuración
 
       await projectService.updateProject(id!, projectData)
 
