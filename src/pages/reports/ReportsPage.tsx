@@ -290,7 +290,7 @@ const ReportsPage = () => {
       </div>
 
       {error && (
-        <Alert variant="destructive">
+        <Alert className="bg-destructive/15 text-destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>

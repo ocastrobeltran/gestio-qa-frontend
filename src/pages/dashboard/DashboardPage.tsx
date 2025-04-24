@@ -53,10 +53,13 @@ const DashboardPage = () => {
           setRecentProjects(sortedProjects)
 
           // Process projects for status data
-          const statusCounts: Record<ProjectStatus, number> = {}
-          projectsData.forEach(project => {
-            statusCounts[project.status] = (statusCounts[project.status] || 0) + 1
-          })
+          const statusCounts: Record<ProjectStatus, number> = {
+            "En análisis": 0,
+            "En validación": 0,
+            "En pruebas": 0,
+            "Aprobado": 0,
+            "Cancelado": 0
+          };
           
           const statusData = Object.entries(statusCounts).map(([status, count]) => ({
             status,
@@ -68,10 +71,9 @@ const DashboardPage = () => {
           if (isAdmin) {
             // Collect analysts data
             const analystCounts: Record<string, number> = {}
-            projectsData.forEach(project => {
-              const analystName = project.qaAnalyst ? project.qaAnalyst.full_name : 'Sin asignar'
-              analystCounts[analystName] = (analystCounts[analystName] || 0) + 1
-            })
+            projectsData.forEach((project: Project) => {
+              statusCounts[project.status] = (statusCounts[project.status] || 0) + 1;
+            });
             
             const analystData = Object.entries(analystCounts).map(([analyst, count]) => ({
               analyst,
@@ -81,7 +83,7 @@ const DashboardPage = () => {
 
             // Collect client data
             const clientCounts: Record<string, number> = {}
-            projectsData.forEach(project => {
+            projectsData.forEach((project: Project) => {
               if (project.client) {
                 clientCounts[project.client] = (clientCounts[project.client] || 0) + 1
               }
