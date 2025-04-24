@@ -112,16 +112,8 @@ export const projectService = {
 
 // Report services
 export const reportService = {
-  getProjectsByStatus: () => {
-    return api.get("/reports/by-status")
-  },
-  getProjectsByAnalyst: () => {
-    return api.get("/reports/by-analyst")
-  },
-  getProjectsByClient: () => {
-    return api.get("/reports/by-client")
-  },
-  getDetailedReport: (filters?: any) => {
-    return api.get("/reports/detailed", { params: filters })
-  },
-}
+  getProjectsByStatus: () => axios.get('http://localhost:5001/api/reports/by-status'),
+  getProjectsByAnalyst: () => axios.get('http://localhost:5001/api/reports/by-analyst'),
+  getProjectsByClient: () => axios.get('http://localhost:5001/api/reports/by-client'),
+  getDetailedReport: () => axios.get('http://localhost:5001/api/reports/detailed'),
+};
