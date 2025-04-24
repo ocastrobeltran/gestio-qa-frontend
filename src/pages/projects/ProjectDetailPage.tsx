@@ -31,11 +31,17 @@ import {
 import LoadingScreen from "../../components/ui/LoadingScreen"
 
 const ProjectDetailPage = () => {
+
+  interface ProjectWithCommentsAndHistory extends Project {
+    comments?: Comment[];
+    history?: HistoryEntry[];
+  }
+
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   // Eliminamos la variable no utilizada
   const { toast } = useToast()
-  const [project, setProject] = useState<Project | null>(null)
+  const [project, setProject] = useState<ProjectWithCommentsAndHistory | null>(null);
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState("")
   const [submittingComment, setSubmittingComment] = useState(false)
