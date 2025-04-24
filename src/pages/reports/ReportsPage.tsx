@@ -92,42 +92,87 @@ const ReportsPage = () => {
       try {
         setLoading(true)
         setError(null)
-
+    
         // Fetch status report
-        let statusResponse, analystResponse, clientResponse, detailedResponse
-
         try {
-          statusResponse = await reportService.getProjectsByStatus()
-          setStatusData(statusResponse.data?.data?.statusReport || [])
+          const statusResponse = await reportService.getProjectsByStatus()
+          console.log("Status API response:", statusResponse.data)
+          
+          if (statusResponse.data?.status === "success" && statusResponse.data?.data?.statusReport) {
+            // Mapea la respuesta de la API al formato esperado por los componentes
+            const mappedStatusData = statusResponse.data.data.statusReport.map((item: any) => ({
+              status: item.status,
+              project_count: item.count // Cambia count a project_count para que coincida con el componente
+            }))
+            console.log("Mapped status data:", mappedStatusData)
+            setStatusData(mappedStatusData)
+          } else {
+            console.warn("Invalid status report structure, using fallback data")
+            setStatusData(FALLBACK_DATA.statusReport)
+          }
         } catch (err) {
           console.error("Error fetching status report:", err)
           setStatusData(FALLBACK_DATA.statusReport)
         }
-
+    
         // Fetch analyst report
         try {
-          analystResponse = await reportService.getProjectsByAnalyst()
-          setAnalystData(analystResponse.data?.data?.analystReport || [])
+          const analystResponse = await reportService.getProjectsByAnalyst()
+          console.log("Analyst API response:", analystResponse.data)
+          
+          if (analystResponse.data?.status === "success" && analystResponse.data?.data?.analystReport) {
+            setAnalystData(analystResponse.data.data.analystReport)
+          } else {
+            console.warn("Invalid analyst report structure, using fallback data")
+            setAnalystData(FALLBACK_DATA.analystReport)
+          }
         } catch (err) {
           console.error("Error fetching analyst report:", err)
           setAnalystData(FALLBACK_DATA.analystReport)
         }
-
+    
         // Fetch client report
         try {
-          clientResponse = await reportService.getProjectsByClient()
-          setClientData(clientResponse.data?.data?.clientReport || [])
+          const clientResponse = await reportService.getProjectsByClient()
+          console.log("Client API response:", clientResponse.data)
+          
+          if (clientResponse.data?.status === "success" && clientResponse.data?.data?.clientReport) {
+            setClientData(clientResponse.data.data.clientReport)
+          } else {
+            console.warn("Invalid client report structure, using fallback data")
+            setClientData(FALLBACK_DATA.clientReport)
+          }
         } catch (err) {
           console.error("Error fetching client report:", err)
           setClientData(FALLBACK_DATA.clientReport)
         }
-
+    
         // Fetch detailed report
         try {
-          detailedResponse = await reportService.getDetailedReport()
-          const projects = detailedResponse.data?.data?.projects || []
-          setDetailedData(projects)
-          setFilteredDetailedData(projects)
+          const detailedResponse = await reportService.getDetailedReport()
+          console.log("Detailed API response:", detailedResponse.data)
+          
+          if (detailedResponse.data?.status === "success" && detailedResponse.data?.data?.report) {
+            const projects = detailedResponse.data.data.report
+            
+            // Mapea la respuesta para que coincida con la estructura esperada
+            const mappedProjects = projects.map((project: any) => ({
+              id: project.id,
+              title: project.title,
+              client: project.client,
+              status: project.status,
+              qa_analyst: { full_name: project.qa_analyst },
+              created_at: project.created_at
+            }))
+            
+            console.log("Mapped detailed data:", mappedProjects)
+            setDetailedData(mappedProjects)
+            setFilteredDetailedData(mappedProjects)
+          } else {
+            console.warn("Invalid detailed report structure, using fallback data")
+            setDetailedData(FALLBACK_DATA.detailedReport)
+            setFilteredDetailedData(FALLBACK_DATA.detailedReport)
+          }
         } catch (err) {
           console.error("Error fetching detailed report:", err)
           setDetailedData(FALLBACK_DATA.detailedReport)
@@ -136,14 +181,14 @@ const ReportsPage = () => {
       } catch (error: any) {
         console.error("Error fetching report data:", error)
         setError("No se pudieron cargar los datos de los reportes. Usando datos de ejemplo.")
-
+        
         // Usar datos de ejemplo en caso de error
         setStatusData(FALLBACK_DATA.statusReport)
         setAnalystData(FALLBACK_DATA.analystReport)
         setClientData(FALLBACK_DATA.clientReport)
         setDetailedData(FALLBACK_DATA.detailedReport)
         setFilteredDetailedData(FALLBACK_DATA.detailedReport)
-
+        
         toast({
           variant: "destructive",
           title: "Error",
@@ -153,7 +198,7 @@ const ReportsPage = () => {
         setLoading(false)
       }
     }
-
+  
     fetchReportData()
   }, [toast])
 
