@@ -1,5 +1,5 @@
 "use client"
-
+import { AxiosError } from "axios";
 import type React from "react"
 
 import { useState } from "react"
@@ -46,10 +46,11 @@ const CreateProjectPage = () => {
         console.log("Filtered analysts:", analystUsers) // Add this to debug
         setAnalysts(analystUsers)
       } catch (error) {
-        console.error("Error fetching analysts:", error)
-        // Log more detailed error information
-        if (error.response) {
-          console.error("Error response data:", error.response.data)
+        console.error("Error fetching analysts:", error);
+        // Tipar el error como AxiosError
+        const axiosError = error as AxiosError;
+        if (axiosError.response) {
+          console.error("Error response data:", axiosError.response.data);
         }
       }
     }
@@ -159,18 +160,17 @@ const CreateProjectPage = () => {
   
       navigate(`/projects/${response.data.data.project.id}`)
     } catch (error) {
-      console.error("Error creating project:", error)
-      // Log more detailed error information
-      if (error.response) {
-        console.error("Error response data:", error.response.data)
+      console.error("Error creating project:", error);
+      // Tipar el error como AxiosError
+      const axiosError = error as AxiosError;
+      if (axiosError.response) {
+        console.error("Error response data:", axiosError.response.data);
       }
       toast({
         variant: "destructive",
         title: "Error",
         description: "No se pudo crear el proyecto. Inténtalo de nuevo.",
-      })
-    } finally {
-      setLoading(false)
+      });
     }
   }
 
