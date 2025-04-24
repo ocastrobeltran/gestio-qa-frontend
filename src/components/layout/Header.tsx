@@ -12,16 +12,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu"
-import { Menu, User, LogOut, Settings, Sun, Moon } from "lucide-react"
+import { Menu, User, LogOut, Settings, Sun, Moon, Shield } from "lucide-react"
 import { Link } from "react-router-dom"
 
 interface HeaderProps {
   onMenuClick: () => void
 }
 
+// Mejora en Header.tsx
+
 const Header = ({ onMenuClick }: HeaderProps) => {
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+
+  // Debugging
+  console.log("Header - User data:", user)
 
   const getInitials = (name: string | undefined | null): string => {
     // Si el nombre es undefined o null, devolver "U" (Usuario)
@@ -33,6 +38,22 @@ const Header = ({ onMenuClick }: HeaderProps) => {
       .join("")
       .toUpperCase()
       .substring(0, 2)
+  }
+
+  // Función para mostrar el rol en español
+  const getRoleDisplay = (role: string | undefined): string => {
+    if (!role) return "Usuario"
+
+    switch (role.toLowerCase()) {
+      case "admin":
+        return "Administrador"
+      case "analyst":
+        return "Analista"
+      case "viewer":
+        return "Visualizador"
+      default:
+        return role
+    }
   }
 
   return (
@@ -68,6 +89,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{user?.full_name || "Usuario"}</p>
                 <p className="text-xs leading-none text-muted-foreground">{user?.email || "Sin correo"}</p>
+                <div className="flex items-center mt-1 text-xs text-muted-foreground">
+                  <Shield className="h-3 w-3 mr-1" />
+                  <span>{getRoleDisplay(user?.role)}</span>
+                </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -77,12 +102,17 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                 <span>Perfil</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/profile" className="flex items-center cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Configuración</span>
-              </Link>
-            </DropdownMenuItem>
+            
+            {/* Solo mostrar configuración para administradores */}
+            {user?.role === "admin" && (
+              <DropdownMenuItem asChild>
+                <Link to="/configuration" className="flex items-center cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Configuración</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+            
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="flex items-center cursor-pointer text-destructive focus:text-destructive"

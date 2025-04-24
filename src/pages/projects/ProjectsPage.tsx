@@ -30,36 +30,46 @@ const ProjectsPage = () => {
       try {
         setLoading(true)
         const response = await projectService.getProjects()
-        setProjects(response.data.data.projects)
-        setFilteredProjects(response.data.data.projects)
+        
+        // Añadir manejo de errores y verificación de la estructura de datos
+        if (response && response.data && response.data.data && Array.isArray(response.data.data.projects)) {
+          setProjects(response.data.data.projects)
+          setFilteredProjects(response.data.data.projects)
+        } else {
+          console.error("Formato inesperado de respuesta:", response)
+          setProjects([])
+          setFilteredProjects([])
+        }
       } catch (error) {
         console.error("Error fetching projects:", error)
+        setProjects([])
+        setFilteredProjects([])
       } finally {
         setLoading(false)
       }
     }
-
+  
     fetchProjects()
   }, [])
 
   useEffect(() => {
     // Apply filters
     let result = [...projects]
-
+  
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       result = result.filter(
         (project) =>
-          project.title.toLowerCase().includes(term) ||
-          project.client.toLowerCase().includes(term) ||
-          project.initiative.toLowerCase().includes(term),
+          (project.title?.toLowerCase() || "").includes(term) ||
+          (project.client?.toLowerCase() || "").includes(term) ||
+          (project.initiative?.toLowerCase() || "").includes(term),
       )
     }
-
-    if (statusFilter) {
+  
+    if (statusFilter && statusFilter !== "all") {
       result = result.filter((project) => project.status === statusFilter)
     }
-
+  
     setFilteredProjects(result)
   }, [searchTerm, statusFilter, projects])
 
