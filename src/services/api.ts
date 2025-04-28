@@ -50,7 +50,13 @@ export const initializeAxiosInterceptors = () => {
 // Auth services
 export const authService = {
   login: (email: string, password: string) => {
-    return api.post("/auth/login", { email, password })
+    return api.post("/auth/login", { email, password });
+  },
+  refreshToken: (refreshToken: string) => {
+    return api.post("/auth/refresh-token", { refreshToken });
+  },
+  logout: () => {
+    return api.post("/auth/logout");
   },
   forgotPassword: (email: string) => {
     return api.post("/auth/forgot-password", { email })
