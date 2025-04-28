@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
@@ -40,8 +38,22 @@ const UserDetailPage = () => {
     const fetchUser = async () => {
       try {
         setLoading(true)
+        console.log("Fetching user with ID:", id)
         const response = await userService.getUser(id!)
-        setUser(response.data.data.user)
+        console.log("User API response:", response)
+        
+        // Verifica la estructura de la respuesta
+        if (response?.data?.data?.user) {
+          setUser(response.data.data.user)
+        } else if (response?.data?.user) {
+          // Estructura alternativa
+          setUser(response.data.user)
+        } else if (response?.data) {
+          // Otra estructura posible
+          setUser(response.data)
+        } else {
+          throw new Error("Formato de respuesta inesperado")
+        }
       } catch (error) {
         console.error("Error fetching user:", error)
         toast({

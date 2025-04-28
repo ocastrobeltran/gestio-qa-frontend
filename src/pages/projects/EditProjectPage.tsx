@@ -172,7 +172,7 @@ const EditProjectPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
+  
     // Validate required fields
     if (!formData.title || !formData.initiative || !formData.client || !formData.pm || !formData.lead_dev) {
       toast({
@@ -182,19 +182,22 @@ const EditProjectPage = () => {
       })
       return
     }
-
+  
     // Filter out empty developers and assets and convert to the expected format
     const filteredDevelopers = formData.developers
       .filter((dev) => dev.developer_name.trim() !== "")
-      .map(dev => dev.developer_name); // Extraer solo los nombres como strings
-
+      .map(dev => dev.developer_name);
+  
     const filteredAssets = formData.assets
       .filter((asset) => asset.asset_url.trim() !== "")
-      .map(asset => asset.asset_url); // Extraer solo las URLs como strings
-
+      .map(asset => asset.asset_url);
+  
     try {
       setSubmitting(true)
-
+  
+      // Verificar si cambió el analista
+      const analystChanged = project?.qa_analyst_id?.toString() !== formData.qa_analyst_id;
+      
       // Prepare data for API
       const projectData = {
         title: formData.title,
@@ -207,19 +210,31 @@ const EditProjectPage = () => {
         test_url: formData.test_url,
         qa_analyst_id: formData.qa_analyst_id || null,
         status: formData.status,
-        developers: filteredDevelopers, // Ahora es un array de strings
-        assets: filteredAssets, // Ahora es un array de strings
+        developers: filteredDevelopers,
+        assets: filteredAssets,
       }
-
-      console.log("Enviando datos para actualizar:", projectData); // Para depuración
-
+  
+      console.log("Enviando datos para actualizar:", projectData);
+  
+      // Actualizar el proyecto
       await projectService.updateProject(id!, projectData)
-
+  
+      // Si cambió el analista y hay uno nuevo asignado, enviar notificación
+      if (analystChanged && formData.qa_analyst_id && formData.qa_analyst_id !== "0") {
+        try {
+          await projectService.assignAnalyst(id!, formData.qa_analyst_id);
+          console.log("Notificación de asignación enviada");
+        } catch (assignError) {
+          console.error("Error al enviar notificación de asignación:", assignError);
+          // No interrumpimos el flujo principal si falla la notificación
+        }
+      }
+  
       toast({
         title: "Proyecto actualizado",
         description: "El proyecto ha sido actualizado exitosamente.",
       })
-
+  
       navigate(`/projects/${id}`)
     } catch (error) {
       console.error("Error updating project:", error)
