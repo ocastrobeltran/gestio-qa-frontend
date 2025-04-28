@@ -55,8 +55,20 @@ const ProjectDetailPage = () => {
     const fetchProject = async () => {
       try {
         setLoading(true)
+        console.log("Fetching project with ID:", id)
         const response = await projectService.getProject(id!)
-        setProject(response.data.data.project)
+        console.log("Project API response:", response)
+        
+        if (response?.data?.data?.project) {
+          setProject(response.data.data.project)
+        } else {
+          console.error("Respuesta de API incorrecta:", response)
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Formato de respuesta incorrecto. Contacta al administrador.",
+          })
+        }
       } catch (error) {
         console.error("Error fetching project:", error)
         toast({
@@ -68,31 +80,49 @@ const ProjectDetailPage = () => {
         setLoading(false)
       }
     }
-
-    fetchProject()
+  
+    if (id) {
+      fetchProject()
+    } else {
+      setLoading(false)
+    }
   }, [id, toast])
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newComment.trim()) return
-
+  
     try {
       setSubmittingComment(true)
+      
+      // Enviar el comentario - el backend se encargará de enviar las notificaciones
       const response = await projectService.addComment(id!, newComment)
-
-      // Update the project with the new comment
+      
+      // Actualizar el proyecto con el nuevo comentario
       setProject((prev) => {
         if (!prev) return prev
+        
+        // Asegurarse de que el comentario incluya la información del autor
+        const newCommentWithAuthor = {
+          ...response.data.data.comment,
+          author: response.data.data.comment.author || {
+            id: user?.id || 0,
+            full_name: user?.full_name || 'Usuario',
+            email: user?.email || '',
+            role: user?.role || ''
+          }
+        };
+        
         return {
           ...prev,
-          comments: [...(prev.comments || []), response.data.data.comment],
+          comments: [...(prev.comments || []), newCommentWithAuthor],
         }
       })
-
+  
       setNewComment("")
       toast({
         title: "Comentario añadido",
-        description: "Tu comentario ha sido añadido correctamente.",
+        description: "Tu comentario ha sido añadido y se han enviado notificaciones a los involucrados.",
       })
     } catch (error) {
       console.error("Error adding comment:", error)
@@ -103,6 +133,21 @@ const ProjectDetailPage = () => {
       })
     } finally {
       setSubmittingComment(false)
+    }
+  }
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "Aprobado":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      case "Cancelado":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+      case "En pruebas":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+      case "En validación":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+      default:
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
     }
   }
 
@@ -123,21 +168,6 @@ const ProjectDetailPage = () => {
         </Button>
       </div>
     )
-  }
-
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case "Aprobado":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-      case "Cancelado":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-      case "En pruebas":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
-      case "En validación":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-      default:
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-    }
   }
 
   return (
@@ -355,9 +385,24 @@ const ProjectDetailPage = () => {
                     className="min-h-[100px]"
                   />
                   <div className="flex justify-end">
-                    <Button type="submit" disabled={submittingComment || !newComment.trim()}>
-                      {submittingComment ? "Enviando..." : "Enviar comentario"}
-                      <Send className="ml-2 h-4 w-4" />
+                  <Button 
+                      type="submit" 
+                      disabled={submittingComment || !newComment.trim()}
+                    >
+                      {submittingComment ? (
+                        <>
+                          <span className="mr-2">Enviando...</span>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        </>
+                      ) : (
+                        <>
+                          Enviar comentario
+                          <Send className="ml-2 h-4 w-4" />
+                        </>
+                      )}
                     </Button>
                   </div>
                 </form>

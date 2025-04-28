@@ -81,7 +81,16 @@ export const userService = {
     return api.get("/users")
   },
   getUser: (id: string) => {
+    console.log(`Requesting user with ID: ${id}`);
     return api.get(`/users/${id}`)
+      .then(response => {
+        console.log("User API response:", response);
+        return response;
+      })
+      .catch(error => {
+        console.error("Error in getUser API call:", error);
+        throw error;
+      });
   },
   createUser: (userData: any) => {
     return api.post("/auth/register", userData)
@@ -114,6 +123,10 @@ export const projectService = {
   addComment: (projectId: string, comment: string) => {
     return api.post(`/projects/${projectId}/comments`, { comment_text: comment })
   },
+
+  assignAnalyst: (projectId: string, analystId: string) => {
+    return api.patch(`/projects/${projectId}`, { qa_analyst_id: analystId });
+  }
 }
 
 // Report services
