@@ -2,6 +2,32 @@ import type { User } from "./user"
 
 export type ProjectStatus = "En análisis" | "En validación" | "En pruebas" | "Aprobado" | "Cancelado";
 export type ProjectPriority = "Alta" | "Media" | "Baja";
+export type DefectSeverity = "Crítico" | "Mayor" | "Menor" | "Cosmético";
+export type DefectStatus = "Abierto" | "En revisión" | "Corregido" | "Verificado" | "Cerrado";
+
+export interface Defect {
+  id: number;
+  project_id: number;
+  title: string;
+  description?: string;
+  severity: DefectSeverity;
+  status: DefectStatus;
+  reported_by: number;
+  assigned_to?: number;
+  reported_at: string;
+  updated_at: string;
+  closed_at?: string;
+  reporter?: {
+    id: number;
+    full_name: string;
+    email: string;
+  };
+  assignee?: {
+    id: number;
+    full_name: string;
+    email: string;
+  };
+}
 
 export interface Project {
   id: number;
@@ -9,6 +35,7 @@ export interface Project {
   initiative: string;
   client: string;
   pm: string;
+  defects?: Defect[];
   lead_dev: string;
   designer: string | null;
   design_url: string | null;
