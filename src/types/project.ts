@@ -1,6 +1,7 @@
 import type { User } from "./user"
 
 export type ProjectStatus = "En análisis" | "En validación" | "En pruebas" | "Aprobado" | "Cancelado";
+export type ProjectPriority = "Alta" | "Media" | "Baja";
 
 export interface Project {
   id: number;
@@ -14,6 +15,7 @@ export interface Project {
   test_url: string | null;
   qa_analyst_id: number | null;
   status: ProjectStatus;
+  priority: ProjectPriority;
   created_by: number;
   created_at: string;
   updated_at: string;

@@ -27,6 +27,7 @@ import {
   ExternalLink,
   History,
   MessageSquare,
+  AlertTriangle
 } from "lucide-react"
 import LoadingScreen from "../../components/ui/LoadingScreen"
 
@@ -87,6 +88,17 @@ const ProjectDetailPage = () => {
       setLoading(false)
     }
   }, [id, toast])
+
+  const getPriorityBadgeClass = (priority: string) => {
+    switch (priority) {
+      case "Alta":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+      case "Baja":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      default: // Media
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+    }
+  }
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -184,6 +196,7 @@ const ProjectDetailPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <Badge className={getStatusBadgeClass(project.status)}>{project.status}</Badge>
+          <Badge className={getPriorityBadgeClass(project.priority)}>{project.priority}</Badge>
           {canEdit && (
             <Button asChild size="sm">
               <Link to={`/projects/${project.id}/edit`}>
@@ -216,6 +229,13 @@ const ProjectDetailPage = () => {
                       Cliente
                     </h3>
                     <p className="mt-1">{project.client}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center">
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      Prioridad
+                    </h3>
+                    <p className="mt-1">{project.priority}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground flex items-center">

@@ -46,6 +46,7 @@ const EditProjectPage = () => {
     designer: "",
     design_url: "",
     test_url: "",
+    priority: "",
     qa_analyst_id: "",
     status: "",
     developers: [{ id: 0, project_id: 0, developer_name: "" }],
@@ -83,6 +84,7 @@ const EditProjectPage = () => {
           test_url: projectData.test_url || "",
           qa_analyst_id: projectData.qa_analyst_id ? projectData.qa_analyst_id.toString() : "",
           status: projectData.status,
+          priority: projectData.priority || "Media",
           developers: projectData.developers?.length
             ? projectData.developers
             : [{ id: 0, project_id: Number.parseInt(id!), developer_name: "" }],
@@ -208,6 +210,7 @@ const EditProjectPage = () => {
         designer: formData.designer,
         design_url: formData.design_url,
         test_url: formData.test_url,
+        priority: formData.priority,
         qa_analyst_id: formData.qa_analyst_id || null,
         status: formData.status,
         developers: filteredDevelopers,
@@ -368,6 +371,19 @@ const EditProjectPage = () => {
                       <SelectItem value="En pruebas">En pruebas</SelectItem>
                       <SelectItem value="Aprobado">Aprobado</SelectItem>
                       <SelectItem value="Cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Prioridad</Label>
+                  <Select value={formData.priority} onValueChange={(value) => handleSelectChange("priority", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una prioridad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Alta">Alta</SelectItem>
+                      <SelectItem value="Media">Media</SelectItem>
+                      <SelectItem value="Baja">Baja</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -31,6 +31,7 @@ const CreateProjectPage = () => {
     designer: "",
     design_url: "",
     test_url: "",
+    priority: "Media",
     qa_analyst_id: "",
     status: "En análisis",
     developers: [{ developer_name: "" }],
@@ -143,6 +144,7 @@ const CreateProjectPage = () => {
         design_url: formData.design_url || null,
         test_url: formData.test_url || null,
         qa_analyst_id: formData.qa_analyst_id === "not_assigned" ? null : formData.qa_analyst_id || null,
+        priority: formData.priority,
         status: formData.status,
         developers: filteredDevelopers,
         assets: filteredAssets,
@@ -242,6 +244,19 @@ const CreateProjectPage = () => {
                       <SelectItem value="En pruebas">En pruebas</SelectItem>
                       <SelectItem value="Aprobado">Aprobado</SelectItem>
                       <SelectItem value="Cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Prioridad</Label>
+                  <Select value={formData.priority} onValueChange={(value) => handleSelectChange("priority", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una prioridad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Alta">Alta</SelectItem>
+                      <SelectItem value="Media">Media</SelectItem>
+                      <SelectItem value="Baja">Baja</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
