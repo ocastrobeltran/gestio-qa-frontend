@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
-import { projectService } from "../../services/api"
+import { projectService, api } from "../../services/api"
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
@@ -27,8 +27,10 @@ import {
   ExternalLink,
   History,
   MessageSquare,
+  AlertTriangle
 } from "lucide-react"
 import LoadingScreen from "../../components/ui/LoadingScreen"
+import DefectsTab from "../../components/project/DefectsTab";
 
 const ProjectDetailPage = () => {
 
@@ -39,13 +41,13 @@ const ProjectDetailPage = () => {
 
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
-  // Eliminamos la variable no utilizada
   const { toast } = useToast()
   const [project, setProject] = useState<ProjectWithCommentsAndHistory | null>(null);
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState("")
   const [submittingComment, setSubmittingComment] = useState(false)
   const [activeTab, setActiveTab] = useState("details")
+  const [users, setUsers] = useState<any[]>([]);
 
   const isAdmin = user?.role === "admin"
   const isAnalyst = user?.role === "analyst"
@@ -87,6 +89,37 @@ const ProjectDetailPage = () => {
       setLoading(false)
     }
   }, [id, toast])
+
+  const getPriorityBadgeClass = (priority: string) => {
+    switch (priority) {
+      case "Alta":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+      case "Baja":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      default: // Media
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+    }
+  }
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get('/users');
+        if (response.data && response.data.data && response.data.data.users) {
+          setUsers(response.data.data.users);
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudieron cargar los usuarios"
+        });
+      }
+    };
+  
+    fetchUsers();
+  }, []);
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -184,6 +217,7 @@ const ProjectDetailPage = () => {
         </div>
         <div className="flex items-center gap-2">
           <Badge className={getStatusBadgeClass(project.status)}>{project.status}</Badge>
+          <Badge className={getPriorityBadgeClass(project.priority)}>{project.priority}</Badge>
           {canEdit && (
             <Button asChild size="sm">
               <Link to={`/projects/${project.id}/edit`}>
@@ -199,6 +233,7 @@ const ProjectDetailPage = () => {
         <TabsList>
           <TabsTrigger value="details">Detalles</TabsTrigger>
           <TabsTrigger value="comments">Comentarios ({project.comments?.length || 0})</TabsTrigger>
+          <TabsTrigger value="defects">Defectos</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -216,6 +251,13 @@ const ProjectDetailPage = () => {
                       Cliente
                     </h3>
                     <p className="mt-1">{project.client}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center">
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      Prioridad
+                    </h3>
+                    <p className="mt-1">{project.priority}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground flex items-center">
@@ -409,6 +451,10 @@ const ProjectDetailPage = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="defects">
+          <DefectsTab users={users} />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">

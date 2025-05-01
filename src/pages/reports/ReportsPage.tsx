@@ -1,7 +1,5 @@
-"use client"
-
 import { useState, useEffect } from "react"
-import { reportService } from "../../services/api"
+import { reportService, projectService } from "../../services/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
@@ -10,10 +8,10 @@ import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table"
-import { Download, Filter, Search, AlertCircle } from "lucide-react"
+import { Download, Filter, Search, AlertCircle, TrendingUp, Clock, CheckCircle, AlertTriangle, Activity } from "lucide-react"
 import LoadingScreen from "../../components/ui/LoadingScreen"
 import { useToast } from "../../components/ui/use-toast"
-import type { ProjectStatus } from "../../types/project"
+import type { ProjectStatus, Project } from "../../types/project"
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert"
 
 // Status colors
@@ -48,24 +46,42 @@ const FALLBACK_DATA = {
   ],
   detailedReport: [
     {
-      id: 1,
-      title: "Proyecto Demo 1",
-      initiative: "Iniciativa X",
-      client: "Empresa A",
-      status: "En análisis",
-      qa_analyst: { full_name: "Ana García" },
-      created_at: new Date().toISOString(),
+    id: 1,
+    title: "Proyecto Demo 1",
+    initiative: "Iniciativa X",
+    client: "Empresa A",
+    status: "En análisis",
+    qa_analyst: { full_name: "Ana García" },
+    created_at: new Date().toISOString(),
+    priority: "Alta"
     },
     {
-      id: 2,
-      title: "Proyecto Demo 2",
-      initiative: "Iniciativa Y",
-      client: "Empresa B",
-      status: "Aprobado",
-      qa_analyst: { full_name: "Carlos Pérez" },
-      created_at: new Date().toISOString(),
+    id: 2,
+    title: "Proyecto Demo 2",
+    initiative: "Iniciativa Y",
+    client: "Empresa B",
+    status: "Aprobado",
+    qa_analyst: { full_name: "Carlos Pérez" },
+    created_at: new Date().toISOString(),
+    priority: "Media"
     },
   ],
+  qualityMetrics: [
+    { metric: "Defectos encontrados", value: 87 },
+    { metric: "Defectos corregidos", value: 72 },
+    { metric: "Tasa de corrección", value: "82.8%" },
+    { metric: "Tiempo promedio de ciclo", value: "4.2 días" },
+  ]
+}
+
+// Tipos para los KPIs
+interface KPI {
+  title: string
+  value: string | number
+  description: string
+  icon: React.ReactNode
+  trend?: "up" | "down" | "neutral"
+  color: string
 }
 
 const ReportsPage = () => {
@@ -76,108 +92,196 @@ const ReportsPage = () => {
   const [analystData, setAnalystData] = useState<any[]>([])
   const [clientData, setClientData] = useState<any[]>([])
   const [detailedData, setDetailedData] = useState<any[]>([])
-  const [activeTab, setActiveTab] = useState("status")
+  const [qualityMetrics, setQualityMetrics] = useState<any[]>([])
+  const [kpis, setKpis] = useState<KPI[]>([])
+  const [activeTab, setActiveTab] = useState("dashboard")
   const [filters, setFilters] = useState({
-    status: "",
-    client: "",
-    analyst: "",
+    status: "all",
+    client: "all",
+    analyst: "all",
     startDate: "",
     endDate: "",
   })
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredDetailedData, setFilteredDetailedData] = useState<any[]>([])
+  const [_, setProjects] = useState<Project[]>([])
 
   useEffect(() => {
     const fetchReportData = async () => {
       try {
         setLoading(true)
         setError(null)
-    
-        // Fetch status report
+        
+        // Fetch projects data from the API
         try {
-          const statusResponse = await reportService.getProjectsByStatus()
-          console.log("Status API response:", statusResponse.data)
+          const projectsResponse = await projectService.getProjects()
+          console.log("Projects API response:", projectsResponse.data)
           
-          if (statusResponse.data?.status === "success" && statusResponse.data?.data?.statusReport) {
-            // Mapea la respuesta de la API al formato esperado por los componentes
-            const mappedStatusData = statusResponse.data.data.statusReport.map((item: any) => ({
-              status: item.status,
-              project_count: item.count // Cambia count a project_count para que coincida con el componente
-            }))
-            console.log("Mapped status data:", mappedStatusData)
-            setStatusData(mappedStatusData)
+          if (projectsResponse.data?.status === "success" && projectsResponse.data?.data?.projects) {
+            const projectsData = projectsResponse.data.data.projects
+            setProjects(projectsData)
+            
+            // Use projects data to generate reports
+            generateReportsFromProjects(projectsData)
           } else {
-            console.warn("Invalid status report structure, using fallback data")
+            console.warn("Invalid projects data structure, using fallback data")
             setStatusData(FALLBACK_DATA.statusReport)
-          }
-        } catch (err) {
-          console.error("Error fetching status report:", err)
-          setStatusData(FALLBACK_DATA.statusReport)
-        }
-    
-        // Fetch analyst report
-        try {
-          const analystResponse = await reportService.getProjectsByAnalyst()
-          console.log("Analyst API response:", analystResponse.data)
-          
-          if (analystResponse.data?.status === "success" && analystResponse.data?.data?.analystReport) {
-            setAnalystData(analystResponse.data.data.analystReport)
-          } else {
-            console.warn("Invalid analyst report structure, using fallback data")
             setAnalystData(FALLBACK_DATA.analystReport)
-          }
-        } catch (err) {
-          console.error("Error fetching analyst report:", err)
-          setAnalystData(FALLBACK_DATA.analystReport)
-        }
-    
-        // Fetch client report
-        try {
-          const clientResponse = await reportService.getProjectsByClient()
-          console.log("Client API response:", clientResponse.data)
-          
-          if (clientResponse.data?.status === "success" && clientResponse.data?.data?.clientReport) {
-            setClientData(clientResponse.data.data.clientReport)
-          } else {
-            console.warn("Invalid client report structure, using fallback data")
             setClientData(FALLBACK_DATA.clientReport)
-          }
-        } catch (err) {
-          console.error("Error fetching client report:", err)
-          setClientData(FALLBACK_DATA.clientReport)
-        }
-    
-        // Fetch detailed report
-        try {
-          const detailedResponse = await reportService.getDetailedReport()
-          console.log("Detailed API response:", detailedResponse.data)
-          
-          if (detailedResponse.data?.status === "success" && detailedResponse.data?.data?.report) {
-            const projects = detailedResponse.data.data.report
-            
-            // Mapea la respuesta para que coincida con la estructura esperada
-            const mappedProjects = projects.map((project: any) => ({
-              id: project.id,
-              title: project.title,
-              client: project.client,
-              status: project.status,
-              qa_analyst: { full_name: project.qa_analyst },
-              created_at: project.created_at
-            }))
-            
-            console.log("Mapped detailed data:", mappedProjects)
-            setDetailedData(mappedProjects)
-            setFilteredDetailedData(mappedProjects)
-          } else {
-            console.warn("Invalid detailed report structure, using fallback data")
             setDetailedData(FALLBACK_DATA.detailedReport)
             setFilteredDetailedData(FALLBACK_DATA.detailedReport)
           }
         } catch (err) {
-          console.error("Error fetching detailed report:", err)
-          setDetailedData(FALLBACK_DATA.detailedReport)
-          setFilteredDetailedData(FALLBACK_DATA.detailedReport)
+          console.error("Error fetching projects:", err)
+          
+          // Fetch status report
+          try {
+            const statusResponse = await reportService.getProjectsByStatus()
+            console.log("Status API response:", statusResponse.data)
+            
+            if (statusResponse.data?.status === "success" && statusResponse.data?.data?.statusReport) {
+              // Mapea la respuesta de la API al formato esperado por los componentes
+              const mappedStatusData = statusResponse.data.data.statusReport.map((item: any) => ({
+                status: item.status,
+                project_count: parseInt(item.count) // Cambia count a project_count para que coincida con el componente
+              }))
+              console.log("Mapped status data:", mappedStatusData)
+              setStatusData(mappedStatusData)
+            } else {
+              console.warn("Invalid status report structure, using fallback data")
+              setStatusData(FALLBACK_DATA.statusReport)
+            }
+          } catch (err) {
+            console.error("Error fetching status report:", err)
+            setStatusData(FALLBACK_DATA.statusReport)
+          }
+          
+          // Fetch analyst report
+          try {
+            const analystResponse = await reportService.getProjectsByAnalyst()
+            console.log("Analyst API response:", analystResponse.data)
+            
+            if (analystResponse.data?.status === "success" && analystResponse.data?.data?.analystReport) {
+              // Map the API response to the expected format
+              const mappedAnalystData = analystResponse.data.data.analystReport.map((item: any) => ({
+                analyst: item.qaAnalyst ? item.qaAnalyst.full_name : "Sin asignar",
+                count: parseInt(item.count)
+              }))
+              setAnalystData(mappedAnalystData)
+            } else {
+              console.warn("Invalid analyst report structure, using fallback data")
+              setAnalystData(FALLBACK_DATA.analystReport)
+            }
+          } catch (err) {
+            console.error("Error fetching analyst report:", err)
+            setAnalystData(FALLBACK_DATA.analystReport)
+          }
+          
+          // Fetch client report
+          try {
+            const clientResponse = await reportService.getProjectsByClient()
+            console.log("Client API response:", clientResponse.data)
+            
+            if (clientResponse.data?.status === "success" && clientResponse.data?.data?.clientReport) {
+              // Map the API response to the expected format
+              const mappedClientData = clientResponse.data.data.clientReport.map((item: any) => ({
+                client: item.client,
+                count: parseInt(item.count)
+              }))
+              setClientData(mappedClientData)
+            } else {
+              console.warn("Invalid client report structure, using fallback data")
+              setClientData(FALLBACK_DATA.clientReport)
+            }
+          } catch (err) {
+            console.error("Error fetching client report:", err)
+            setClientData(FALLBACK_DATA.clientReport)
+          }
+
+          // En ReportsPage.tsx, modificar la función fetchReportData para incluir:
+
+          // Fetch quality metrics
+          try {
+            const qualityResponse = await reportService.getQualityMetrics();
+            console.log("Quality metrics API response:", qualityResponse.data);
+            
+            if (qualityResponse.data?.status === "success" && qualityResponse.data?.data?.qualityMetrics) {
+              const metrics = qualityResponse.data.data.qualityMetrics;
+              
+              // Convertir a formato para la tabla
+              const qualityMetricsData = [
+                { metric: "Defectos encontrados", value: metrics.totalDefects },
+                { metric: "Defectos corregidos", value: metrics.fixedDefects },
+                { metric: "Tasa de corrección", value: `${metrics.correctionRate}%` },
+                { metric: "Tiempo promedio de ciclo", value: `${metrics.avgCycleTime} días` }
+              ];
+              
+              setQualityMetrics(qualityMetricsData);
+            } else {
+              console.warn("Invalid quality metrics structure, using fallback data");
+              setQualityMetrics([
+                { metric: "Defectos encontrados", value: 87 },
+                { metric: "Defectos corregidos", value: 72 },
+                { metric: "Tasa de corrección", value: "82.8%" },
+                { metric: "Tiempo promedio de ciclo", value: "14.3 días" }
+              ]);
+            }
+          } catch (err) {
+            console.error("Error fetching quality metrics:", err);
+            setQualityMetrics([
+              { metric: "Defectos encontrados", value: 87 },
+              { metric: "Defectos corregidos", value: 72 },
+              { metric: "Tasa de corrección", value: "82.8%" },
+              { metric: "Tiempo promedio de ciclo", value: "14.3 días" }
+            ]);
+          }
+          
+          // Fetch detailed report
+          try {
+            const detailedResponse = await reportService.getDetailedReport()
+            console.log("Detailed API response:", detailedResponse.data)
+            
+            if (detailedResponse.data?.status === "success" && detailedResponse.data?.data?.report) {
+              const projects = detailedResponse.data.data.report
+              
+              // Mapea la respuesta para que coincida con la estructura esperada
+              const mappedProjects = projects.map((project: any) => ({
+                id: project.id,
+                title: project.title,
+                client: project.client,
+                status: project.status,
+                qa_analyst: { full_name: project.qa_analyst },
+                created_at: project.created_at,
+                priority: project.priority || "Media"
+              }))
+              
+              console.log("Mapped detailed data:", mappedProjects)
+              setDetailedData(mappedProjects)
+              setFilteredDetailedData(mappedProjects)
+              
+              // Usar datos reales para calcular KPIs
+              calculateKPIs(mappedProjects)
+            } else {
+              console.warn("Invalid detailed report structure, using fallback data")
+              setDetailedData(FALLBACK_DATA.detailedReport)
+              setFilteredDetailedData(FALLBACK_DATA.detailedReport)
+              
+              // Usar datos de ejemplo para calcular KPIs
+              calculateKPIs(FALLBACK_DATA.detailedReport)
+            }
+          } catch (err) {
+            console.error("Error fetching detailed report:", err)
+            setDetailedData(FALLBACK_DATA.detailedReport)
+            setFilteredDetailedData(FALLBACK_DATA.detailedReport)
+            
+            // Usar datos de ejemplo para calcular KPIs
+            calculateKPIs(FALLBACK_DATA.detailedReport)
+          }
         }
+        
+        // Establecer métricas de calidad (por ahora usando datos de ejemplo)
+        setQualityMetrics(FALLBACK_DATA.qualityMetrics)
+        
       } catch (error: any) {
         console.error("Error fetching report data:", error)
         setError("No se pudieron cargar los datos de los reportes. Usando datos de ejemplo.")
@@ -188,6 +292,10 @@ const ReportsPage = () => {
         setClientData(FALLBACK_DATA.clientReport)
         setDetailedData(FALLBACK_DATA.detailedReport)
         setFilteredDetailedData(FALLBACK_DATA.detailedReport)
+        setQualityMetrics(FALLBACK_DATA.qualityMetrics)
+        
+        // Calcular KPIs con datos de ejemplo
+        calculateKPIs(FALLBACK_DATA.detailedReport)
         
         toast({
           variant: "destructive",
@@ -202,6 +310,129 @@ const ReportsPage = () => {
     fetchReportData()
   }, [toast])
 
+  // Función para generar reportes a partir de los datos de proyectos
+  const generateReportsFromProjects = (projects: Project[]) => {
+    // Generar reporte por estado
+    const statusCounts: Record<string, number> = {}
+    projects.forEach(project => {
+      statusCounts[project.status] = (statusCounts[project.status] || 0) + 1
+    })
+    
+    const statusReport = Object.entries(statusCounts).map(([status, count]) => ({
+      status,
+      project_count: count
+    }))
+    setStatusData(statusReport)
+    
+    // Generar reporte por analista
+    const analystCounts: Record<string, number> = {}
+    projects.forEach(project => {
+      const analystName = project.qaAnalyst ? project.qaAnalyst.full_name : "Sin asignar"
+      analystCounts[analystName] = (analystCounts[analystName] || 0) + 1
+    })
+    
+    const analystReport = Object.entries(analystCounts).map(([analyst, count]) => ({
+      analyst,
+      count
+    }))
+    setAnalystData(analystReport)
+    
+    // Generar reporte por cliente
+    const clientCounts: Record<string, number> = {}
+    projects.forEach(project => {
+      clientCounts[project.client] = (clientCounts[project.client] || 0) + 1
+    })
+    
+    const clientReport = Object.entries(clientCounts).map(([client, count]) => ({
+      client,
+      count
+    }))
+    setClientData(clientReport)
+    
+    // Generar reporte detallado
+    const detailedReport = projects.map(project => ({
+      id: project.id,
+      title: project.title,
+      initiative: project.initiative,
+      client: project.client,
+      status: project.status,
+      qa_analyst: project.qaAnalyst,
+      created_at: project.created_at,
+      priority: project.priority
+    }))
+    
+    setDetailedData(detailedReport)
+    setFilteredDetailedData(detailedReport)
+    
+    // Calcular KPIs
+    calculateKPIs(detailedReport)
+  }
+
+  // Función para calcular KPIs basados en los datos
+  const calculateKPIs = (allProjects: any[]) => {
+    // Total de proyectos
+    const totalProjects = allProjects.length
+    
+    // Proyectos activos (no aprobados ni cancelados)
+    const activeProjects = allProjects.filter(
+      p => p.status !== "Aprobado" && p.status !== "Cancelado"
+    ).length
+    
+    // Tasa de aprobación
+    const approvedProjects = allProjects.filter(p => p.status === "Aprobado").length
+    const approvalRate = totalProjects > 0 ? (approvedProjects / totalProjects) * 100 : 0
+    
+    // Proyectos de alta prioridad
+    const highPriorityProjects = allProjects.filter(p => p.priority === "Alta").length
+    
+    // Tiempo promedio de ciclo (simulado)
+    const avgCycleTime = 14.3 // días
+    
+    // Definir los KPIs
+    const calculatedKpis: KPI[] = [
+      {
+        title: "Proyectos Totales",
+        value: totalProjects,
+        description: "Número total de proyectos en el sistema",
+        icon: <Activity className="h-5 w-5" />,
+        color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+      },
+      {
+        title: "Proyectos Activos",
+        value: activeProjects,
+        description: "Proyectos en proceso actualmente",
+        icon: <TrendingUp className="h-5 w-5" />,
+        trend: "up",
+        color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+      },
+      {
+        title: "Tasa de Aprobación",
+        value: `${approvalRate.toFixed(1)}%`,
+        description: "Porcentaje de proyectos aprobados",
+        icon: <CheckCircle className="h-5 w-5" />,
+        trend: approvalRate > 75 ? "up" : "down",
+        color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      },
+      {
+        title: "Tiempo Promedio de Ciclo",
+        value: `${avgCycleTime} días`,
+        description: "Tiempo promedio desde inicio hasta aprobación",
+        icon: <Clock className="h-5 w-5" />,
+        color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+      },
+      {
+        title: "Proyectos Alta Prioridad",
+        value: highPriorityProjects,
+        description: "Número de proyectos con prioridad alta",
+        icon: <AlertTriangle className="h-5 w-5" />,
+        trend: highPriorityProjects > 3 ? "up" : "neutral",
+        color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+      }
+    ]
+    
+    setKpis(calculatedKpis)
+  }
+
   useEffect(() => {
     // Apply filters and search to detailed data
     if (!detailedData || !Array.isArray(detailedData)) {
@@ -211,15 +442,15 @@ const ReportsPage = () => {
 
     let result = [...detailedData]
 
-    if (filters.status) {
+    if (filters.status && filters.status !== "all") {
       result = result.filter((project) => project.status === filters.status)
     }
 
-    if (filters.client) {
+    if (filters.client && filters.client !== "all") {
       result = result.filter((project) => project.client === filters.client)
     }
 
-    if (filters.analyst) {
+    if (filters.analyst && filters.analyst !== "all") {
       result = result.filter(
         (project) =>
           project.qa_analyst?.full_name === filters.analyst ||
@@ -257,9 +488,9 @@ const ReportsPage = () => {
 
   const resetFilters = () => {
     setFilters({
-      status: "",
-      client: "",
-      analyst: "",
+      status: "all",
+      client: "all",
+      analyst: "all",
       startDate: "",
       endDate: "",
     })
@@ -279,7 +510,7 @@ const ReportsPage = () => {
     // Exportar datos a CSV
     // Create CSV content
     let csvContent = "data:text/csv;charset=utf-8,"
-    csvContent += "ID,Título,Iniciativa,Cliente,Estado,Analista QA,Fecha Creación\n"
+    csvContent += "ID,Título,Iniciativa,Cliente,Estado,Analista QA,Prioridad,Fecha Creación\n"
 
     filteredDetailedData.forEach((project) => {
       const row = [
@@ -288,7 +519,8 @@ const ReportsPage = () => {
         `"${(project.initiative || "").replace(/"/g, '""')}"`,
         `"${(project.client || "").replace(/"/g, '""')}"`,
         project.status || "",
-        project.qa_analyst ? `"${project.qa_analyst.full_name.replace(/"/g, '""')}"` : "Sin asignar",
+        project.qa_analyst ? `"${(project.qa_analyst.full_name || "").replace(/"/g, '""')}"` : "Sin asignar",
+        project.priority || "Media",
         project.created_at ? new Date(project.created_at).toLocaleDateString() : "",
       ]
       csvContent += row.join(",") + "\n"
@@ -342,13 +574,160 @@ const ReportsPage = () => {
         </Alert>
       )}
 
-      <Tabs defaultValue="status" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+      <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-2 md:grid-cols-5">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="status">Por Estado</TabsTrigger>
           <TabsTrigger value="analyst">Por Analista</TabsTrigger>
           <TabsTrigger value="client">Por Cliente</TabsTrigger>
           <TabsTrigger value="detailed">Detallado</TabsTrigger>
         </TabsList>
+
+        {/* Dashboard Tab - KPIs y Métricas */}
+        <TabsContent value="dashboard" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {kpis.map((kpi, index) => (
+              <Card key={index}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                  <div className={`rounded-full p-2 ${kpi.color}`}>
+                    {kpi.icon}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{kpi.value}</div>
+                  <p className="text-xs text-muted-foreground">{kpi.description}</p>
+                  {kpi.trend && (
+                    <div className="mt-2 flex items-center text-xs">
+                      {kpi.trend === "up" ? (
+                        <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
+                      ) : kpi.trend === "down" ? (
+                        <TrendingUp className="mr-1 h-3 w-3 text-red-500 rotate-180" />
+                      ) : null}
+                      <span className={kpi.trend === "up" ? "text-green-500" : kpi.trend === "down" ? "text-red-500" : ""}>
+                        {kpi.trend === "up" ? "Incremento" : kpi.trend === "down" ? "Decremento" : "Estable"}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Métricas de calidad */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Métricas de Calidad</CardTitle>
+                <CardDescription>Indicadores de calidad del proceso QA</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Métrica</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {qualityMetrics.map((metric, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{metric.metric}</TableCell>
+                        <TableCell className="text-right">{metric.value}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Distribución por estado */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribución por Estado</CardTitle>
+                <CardDescription>Proyectos agrupados por estado actual</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="project_count"
+                      nameKey="status"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={STATUS_COLORS[entry.status as ProjectStatus] || "#ff5252"}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Distribución por prioridad */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribución por Prioridad</CardTitle>
+                <CardDescription>Proyectos agrupados por nivel de prioridad</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { priority: "Alta", value: detailedData.filter(p => p.priority === "Alta").length },
+                        { priority: "Media", value: detailedData.filter(p => p.priority === "Media").length },
+                        { priority: "Baja", value: detailedData.filter(p => p.priority === "Baja").length }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      nameKey="priority"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      <Cell fill="#e74c3c" /> {/* Alta - Rojo */}
+                      <Cell fill="#f39c12" /> {/* Media - Naranja */}
+                      <Cell fill="#3498db" /> {/* Baja - Azul */}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribución por Cliente</CardTitle>
+                <CardDescription>Proyectos por cliente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={clientData.slice(0, 5)} layout="vertical" margin={{ left: 100 }}>
+                    <XAxis type="number" />
+                    <YAxis type="category" dataKey="client" width={100} />
+                    <Tooltip />
+                    <Bar dataKey="count" name="Proyectos" fill="#3498db" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="status" className="space-y-4">
           <Card>
@@ -427,8 +806,8 @@ const ReportsPage = () => {
                   </TableHeader>
                   <TableBody>
                     {statusData.map((item) => {
-                      const total = statusData.reduce((sum, current) => sum + current.project_count, 0)
-                      const percentage = ((item.project_count / total) * 100).toFixed(1)
+                      const total = statusData.reduce((sum, current) => sum + parseInt(current.project_count), 0)
+                      const percentage = ((parseInt(item.project_count) / total) * 100).toFixed(1)
 
                       return (
                         <TableRow key={item.status}>
@@ -498,8 +877,8 @@ const ReportsPage = () => {
                   </TableHeader>
                   <TableBody>
                     {analystData.map((item) => {
-                      const total = analystData.reduce((sum, current) => sum + current.count, 0)
-                      const percentage = ((item.count / total) * 100).toFixed(1)
+                      const total = analystData.reduce((sum, current) => sum + parseInt(current.count), 0)
+                      const percentage = ((parseInt(item.count) / total) * 100).toFixed(1)
 
                       return (
                         <TableRow key={item.analyst}>
@@ -561,8 +940,8 @@ const ReportsPage = () => {
                   </TableHeader>
                   <TableBody>
                     {clientData.map((item) => {
-                      const total = clientData.reduce((sum, current) => sum + current.count, 0)
-                      const percentage = ((item.count / total) * 100).toFixed(1)
+                      const total = clientData.reduce((sum, current) => sum + parseInt(current.count), 0)
+                      const percentage = ((parseInt(item.count) / total) * 100).toFixed(1)
 
                       return (
                         <TableRow key={item.client}>
@@ -703,6 +1082,7 @@ const ReportsPage = () => {
                       <TableHead>Título</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Estado</TableHead>
+                      <TableHead>Prioridad</TableHead>
                       <TableHead>Analista QA</TableHead>
                       <TableHead>Fecha Creación</TableHead>
                     </TableRow>
@@ -720,15 +1100,28 @@ const ReportsPage = () => {
                                 project.status === "Aprobado"
                                   ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                   : project.status === "Cancelado"
-                                    ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                                    : project.status === "En pruebas"
-                                      ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
-                                      : project.status === "En validación"
-                                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                                        : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                  : project.status === "En pruebas"
+                                  ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+                                  : project.status === "En validación"
+                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                                  : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
                               }`}
                             >
                               {project.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                project.priority === "Alta"
+                                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                  : project.priority === "Media"
+                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                                  : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                              }`}
+                            >
+                              {project.priority || "Media"}
                             </span>
                           </TableCell>
                           <TableCell>{project.qa_analyst?.full_name || "Sin asignar"}</TableCell>
@@ -739,7 +1132,7 @@ const ReportsPage = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           No se encontraron proyectos con los filtros aplicados
                         </TableCell>
                       </TableRow>

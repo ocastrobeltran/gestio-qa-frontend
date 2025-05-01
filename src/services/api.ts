@@ -135,4 +135,27 @@ export const reportService = {
   getProjectsByAnalyst: () => api.get('/reports/by-analyst'),
   getProjectsByClient: () => api.get('/reports/by-client'),
   getDetailedReport: () => api.get('/reports/detailed'),
+  getQualityMetrics: () => api.get('/reports/quality-metrics'),
+};
+
+// Defect services
+export const defectService = {
+  getDefects: (projectId: string) => {
+    return api.get(`/projects/${projectId}/defects`);
+  },
+  getDefect: (projectId: string, defectId: string) => {
+    return api.get(`/projects/${projectId}/defects/${defectId}`);
+  },
+  createDefect: (projectId: string, defectData: any) => {
+    return api.post(`/projects/${projectId}/defects`, defectData);
+  },
+  updateDefect: (projectId: string, defectId: string, defectData: any) => {
+    return api.patch(`/projects/${projectId}/defects/${defectId}`, defectData);
+  },
+  deleteDefect: (projectId: string, defectId: string) => {
+    return api.delete(`/projects/${projectId}/defects/${defectId}`);
+  },
+  getDefectStats: (projectId: string) => {
+    return api.get(`/projects/${projectId}/defects/stats`);
+  }
 };
